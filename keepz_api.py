@@ -512,9 +512,11 @@ class KeepzClient:
     ) -> Any:
         payload = {
             "sentOrReceived": sent_or_received,
-            "senderInfo": sender_info,
-            "recipientInfo": recipient_info,
         }
+        if sender_info:
+            payload["senderInfo"] = sender_info
+        if recipient_info:
+            payload["recipientInfo"] = recipient_info
         params = {"page": page, "limit": limit}
         data = self._request_json(
             "POST",
