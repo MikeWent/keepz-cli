@@ -4,7 +4,6 @@ import argparse
 import json
 import sys
 from typing import Any, Dict, Optional
-from uuid import uuid4
 
 from pydantic import BaseModel
 
@@ -13,6 +12,7 @@ from keepz_api import (
     KeepzApiError,
     TokenBundle,
     default_token_path,
+    generate_device_token,
     load_tokens,
     parse_access_claims,
     parse_refresh_claims,
@@ -52,10 +52,6 @@ def _print_transactions(transactions: Any) -> None:
         print(line)
 
 
-def _generate_device_token() -> str:
-    return f"e-{uuid4().hex[:20]}:APA91b{uuid4().hex}{uuid4().hex[:12]}"
-
-
 def cmd_auth(args: argparse.Namespace) -> None:
     client = KeepzClient(base_url=args.base_url)
 
@@ -69,7 +65,7 @@ def cmd_auth(args: argparse.Namespace) -> None:
     code = args.sms_code or input("SMS code: ").strip()
 
     user_sms_id = client.verify_sms(code=code, phone=phone, country_code=country_code)
-    device_token = args.device_token or _generate_device_token()
+    device_token = args.device_token or generate_device_token()
     login_payload = client.login(
         user_sms_id=user_sms_id,
         device_token=device_token,
@@ -185,7 +181,7 @@ def build_parser() -> argparse.ArgumentParser:
     auth.add_argument("--sms-code")
     auth.add_argument(
         "--device-token",
-        default=_generate_device_token(),
+        default=generate_device_token(),
     )
     auth.add_argument("--mobile-name", default="iPhone 12 mini")
     auth.add_argument("--mobile-os", default="IOS")

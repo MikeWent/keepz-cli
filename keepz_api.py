@@ -5,6 +5,7 @@ import json
 import os
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
+from uuid import uuid4
 
 import requests
 from pydantic import BaseModel, Field, ValidationError
@@ -14,6 +15,10 @@ DEFAULT_BASE_URL = "https://gateway.keepz.me"
 DEFAULT_USER_AGENT = "keepz/10 CFNetwork/3860.300.31 Darwin/25.2.0"
 DEFAULT_ACCEPT = "application/json, text/plain, */*"
 DEFAULT_ACCEPT_LANGUAGE = "en-GB,en;q=0.9"
+
+
+def generate_device_token() -> str:
+    return f"e-{uuid4().hex[:20]}:APA91b{uuid4().hex}{uuid4().hex[:12]}"
 
 
 class KeepzApiError(RuntimeError):
