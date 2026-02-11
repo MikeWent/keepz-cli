@@ -474,57 +474,6 @@ class KeepzClient:
         self.set_access_token(refreshed.access_token)
         return refreshed
 
-    def refresh_access_token(
-        self,
-        bundle: TokenBundle,
-        *,
-        token_endpoint: Optional[str] = None,
-        client_id: Optional[str] = None,
-        client_secret: Optional[str] = None,
-        auth_method: str = "post",
-    ) -> TokenBundle:
-        if not bundle.refresh_token:
-            raise KeepzApiError("No refresh_token available for refresh")
-
-        endpoint = token_endpoint or self.token_endpoint or DEFAULT_TOKEN_ENDPOINT
-        access_claims = parse_access_claims(bundle.access_token)
-        client = client_id or access_claims.azp
-
-        data = {
-            "grant_type": "refresh_token",
-            "client_id": client,
-            "refresh_token": bundle.refresh_token,
-        }
-        if client_secret:
-            data["client_secret"] = client_secret
-        headers = {
-            "accept": DEFAULT_ACCEPT,
-            "content-type": "application/x-www-form-urlencoded",
-        }
-        if client_secret and auth_method == "basic":
-            auth = (client, client_secret)
-        else:
-            auth = None
-        resp = self.session.post(
-            endpoint,
-            data=data,
-            headers=headers,
-            auth=auth,
-            timeout=self.timeout,
-        )
-        if resp.status_code != 200:
-            raise KeepzApiError(
-                f"Token refresh failed with status {resp.status_code}: {resp.text}"
-            )
-        try:
-            payload = resp.json()
-        except ValueError as exc:
-            raise KeepzApiError("Invalid JSON token refresh response") from exc
-
-        refreshed = TokenBundle.from_login_payload(payload, user_id=bundle.user_id)
-        self.set_access_token(refreshed.access_token)
-        return refreshed
-
     def profile_details(self) -> Any:
         data = self._request_json("GET", "/common-service/api/v1/profile/details")
         return _maybe_parse_response(ProfileDetails, data)
@@ -539,6 +488,57 @@ class KeepzClient:
         self,
         amount: float,
         currency: str,
+        commission_type: str = "SENDER",
+        note: Optional[str] = None,
+    ) -> str:
+        params = {
+            "amount": amount,
+            "currency": currency,
+            "commissionType": commission_type,
+        }
+        if note:
+            params["note"] = note
+        return self._request_json(
+            "POST", "/payment-service/api/merchant/product", params=params
+        )
+
+    def list_transactions(
+        self,
+        page: int = 0,
+        limit: int = 20,
+        sent_or_received: str = "ALL",
+        sender_info: str = "",
+        recipient_info: str = "",
+    ) -> Any:
+        payload = {
+            "sentOrReceived": sent_or_received,
+            "senderInfo": sender_info,
+            "recipientInfo": recipient_info,
+        }
+        params = {"page": page, "limit": limit}
+        data = self._request_json(
+            "POST",
+            "/payment-service/api/v1/generic-transaction/filter",
+            params=params,
+            json_body=payload,
+        )
+        return _maybe_parse_response(TransactionsResponse, data)
+
+    def get_transaction(self, transaction_id: int) -> Any:
+        data = self._request_json(
+            "GET", f"/payment-service/api/v1/generic-transaction/{transaction_id}"
+        )
+        return _maybe_parse_response(Transaction, data)
+
+    def set_default_amount(
+        self, amount: float, currency: str, note: Optional[str] = None
+    ) -> Any:
+        payload = {"amount": amount, "currency": currency, "note": note}
+        data = self._request_json(
+            "POST", "/payment-service/api/v1/amount-for-default", json_body=payload
+        )
+        return _maybe_parse_response(AmountForDefaultSet, data)
+
     def delete_default_amount(self) -> None:
         self._request_json(
             "DELETE",
