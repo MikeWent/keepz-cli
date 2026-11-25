@@ -10,3 +10,4 @@ wheels/
 .venv
 keepz_requests*/
 keepz_refresh*/
+keepz_updated*/
